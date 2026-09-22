@@ -1,0 +1,48 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compile & Package iOS IPA
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run verification tests
+        run: flutter test
+
+      - name: Build iOS Release App (No Code Sign)
+        run: |
+          flutter build ios --release --no-codesign
+
+      - name: Package Runner.app into Installable .ipa
+        run: |
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -r -y TextCraft.ipa Payload
+          mv TextCraft.ipa ../../../TextCraft.ipa
+
+      - name: Upload .ipa as Downloadable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TextCraft-iOS-IPA
+          path: TextCraft.ipa
+          retention-days: 14
